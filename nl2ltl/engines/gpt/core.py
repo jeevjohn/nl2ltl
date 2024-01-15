@@ -14,7 +14,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Set
 
-import openai
+#import openai
+from openai import OpenAI
 from pylogics.syntax.base import Formula
 
 from nl2ltl.engines.base import Engine
@@ -22,7 +23,10 @@ from nl2ltl.engines.gpt import ENGINE_ROOT
 from nl2ltl.engines.gpt.output import GPTOutput, parse_gpt_output, parse_gpt_result
 from nl2ltl.filters.base import Filter
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+#openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(
+    api_key = os.environ.get("OPENAI_API_KEY") 
+)
 engine_root = ENGINE_ROOT
 DATA_DIR = engine_root / "data"
 PROMPT_PATH = engine_root / DATA_DIR / "prompt.json"
@@ -55,7 +59,7 @@ class GPTEngine(Engine):
 
     def __init__(
         self,
-        model: str = Models.GPT4.value,
+        model: str = Models.GPT35.value,
         prompt: Path = PROMPT_PATH,
         operation_mode: str = OperationModes.CHAT.value,
         temperature: float = 0.5,
@@ -73,7 +77,7 @@ class GPTEngine(Engine):
 
     def _check_consistency(self) -> None:
         """Run consistency checks."""
-        self.__check_openai_version()
+        #self.__check_openai_version() #check not required
         self.__check_model_support()
         self.__check_operation_mode()
 
@@ -160,7 +164,7 @@ def _process_utterance(
     query = f"NL: {utterance}\n"
     messages = [{"role": "user", "content": prompt + query}]
     if operation_mode == OperationModes.CHAT.value:
-        prediction = openai.ChatCompletion.create(
+        prediction = client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=temperature,
@@ -171,7 +175,7 @@ def _process_utterance(
             stop=["\n\n"],
         )
     else:
-        prediction = openai.Completion.create(
+        prediction = client.chat.completions.create(
             model=model,
             prompt=messages[0]["content"],
             temperature=temperature,
@@ -181,7 +185,35 @@ def _process_utterance(
             presence_penalty=0.0,
             stop=["\n\n"],
         )
+# Manually convert the ChatCompletion object to a dictionary
+    prediction_dict = {
+    "id": prediction.id,
+    "choices": [
+        {
+            "finish_reason": choice.finish_reason,
+            "index": choice.index,
+            "logprobs": choice.logprobs,
+            "message": {
+                "content": choice.message.content,
+                "role": choice.message.role,
+                "function_call": choice.message.function_call,
+                "tool_calls": choice.message.tool_calls
+            }
+        } for choice in prediction.choices
+    ],
+    "created": prediction.created,
+    "model": prediction.model,
+    "object": prediction.object,  
+    "system_fingerprint": prediction.system_fingerprint,
+    "usage": {
+        "completion_tokens": prediction.usage.completion_tokens,
+        "prompt_tokens": prediction.usage.prompt_tokens,
+        "total_tokens": prediction.usage.total_tokens
+    }
+}
 
-    gpt_result: GPTOutput = parse_gpt_output(prediction, operation_mode)
+
+    #gpt_result: GPTOutput = parse_gpt_output(prediction, operation_mode)
+    gpt_result: GPTOutput = parse_gpt_output(prediction_dict, operation_mode)
     matching_formulas: Dict[Formula, float] = parse_gpt_result(gpt_result, filtering)
     return matching_formulas

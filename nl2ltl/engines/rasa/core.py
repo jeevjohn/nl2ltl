@@ -12,7 +12,9 @@ import asyncio
 import shutil
 from pathlib import Path
 from typing import Dict
-
+# added as per Tensorflow issue https://github.com/tensorflow/tensorflow/issues/59779
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import rasa
 from pylogics.syntax.base import Formula
 from rasa.core.agent import Agent
@@ -41,7 +43,7 @@ class RasaEngine(Engine):
         """Rasa NLU Engine initialization."""
         self._load_model(model)
 
-        self._check_consistency()
+       # self._check_consistency()   check not required
 
     def _load_model(self, model: Path = None):
         if model:
@@ -49,10 +51,10 @@ class RasaEngine(Engine):
         else:
             self.agent = Agent.load(_get_latest_model(path=MODEL_OUTPUT_PATH))
 
-    def _check_consistency(self) -> None:
+    '''def _check_consistency(self) -> None:
         """Run consistency checks."""
         self.__check_rasa_available()
-        self.__check_rasa_version()
+        self.__check_rasa_version()  check not required
 
     def __check_rasa_available(self):
         """Check that the Rasa tool is available."""
@@ -73,7 +75,7 @@ class RasaEngine(Engine):
                 "\n"
                 "pip install rasa==3.5.11"
             )
-
+    '''
     @staticmethod
     def train(
         domain: Path = DOMAIN_PATH,

@@ -17,6 +17,12 @@ def _get_formulas(name: str, args: Dict[str, float]) -> Set[Formula]:
     class_name_match = difflib.get_close_matches(
         name, [x.value for x in TemplateEnum], n=1
     )
+    #added to test entities
+    if not class_name_match:
+        # No match found, skip further processing or handle it
+        print(f"No match found for {name}")
+        return set()    
+    
     grounding_map: Dict[str, Callable] = {}
     for c_name in TemplateEnum:
         grounding_map[c_name.value] = getattr(
